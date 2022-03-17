@@ -163,7 +163,7 @@ namespace ART_ROWEX {
                      pptr<N> newNodePtr;
                      //PMem::alloc(poolId,sizeof(N4),(void **)&newNodePtr, &(olog->newNodeOid));
                      oplogs[oplogsCount].op = OpStruct::insert;
-                     oplogs[oplogsCount].oldNodePtr = (void*)parentPtr.getRawPtr();;
+                     oplogs[oplogsCount].oldNodePtr = parentPtr.getRawPtr();;
                      PMem::alloc(poolId,sizeof(N4),(void **)&newNodePtr, &(oplogs[oplogsCount].newNodeOid));
 		     
                      oplogsCount++;
@@ -271,9 +271,8 @@ namespace ART_ROWEX {
  				pptr<N> n4Ptr;
                 //PMem::alloc(poolId,sizeof(N4),(void **)&n4Ptr);
                 PMem::alloc(poolId,sizeof(N4),(void **)&n4Ptr,&(olog->newNodeOid));*/
-		pptr<N> n4Ptr;
                 oplogs[oplogsCount].op = OpStruct::insert;
-                oplogs[oplogsCount].oldNodePtr = (void*)nodePtr.getRawPtr();;
+                oplogs[oplogsCount].oldNodePtr = nodePtr.getRawPtr();;
                 PMem::alloc(poolId,sizeof(N4),(void **)&n4Ptr,&(oplogs[oplogsCount].newNodeOid));
 		oplogsCount++;
                 //PMem::++;
@@ -749,18 +748,15 @@ namespace ART_ROWEX {
         std::size_t resultSize = 1;
         TID result[resultSize];
         std::function<void(const N *)> copy = [&result, &resultSize, &resultsFound, &toContinue, &copy](const N *node) {
-	    assert(node != nullptr);
             if (N::isLeaf(node)) {
-		assert((void*)N::getLeaf(node) != nullptr);
                 if (resultsFound == resultSize) {
                     toContinue = N::getLeaf(node);
-		    return;
+                    return;
                 }
                 result[resultsFound] = N::getLeaf(node);
                 resultsFound++;
             } else {
                 N* child = N::getSmallestChild(node, 0);
-		assert(child != nullptr);
                 copy(child);
                 /*
                 std::tuple<uint8_t, N *> children[256];
@@ -776,7 +772,6 @@ namespace ART_ROWEX {
             }
         };
         std::function<void(const N *)> copyReverse = [&result, &resultSize, &resultsFound, &toContinue, &copyReverse](const N *node) {
-	    assert(node != nullptr);
             if (N::isLeaf(node)) {
                 if (resultsFound == resultSize) {
                     toContinue = N::getLeaf(node);
@@ -786,7 +781,6 @@ namespace ART_ROWEX {
                 resultsFound++;
             } else {
                 N* child = N::getLargestChild(node, 255);
-		assert(child != nullptr);
                 copyReverse(child);
                 /*
                 std::tuple<uint8_t, N *> children[256];
@@ -803,7 +797,6 @@ namespace ART_ROWEX {
         };
         std::function<void(N *, N*, uint32_t, uint32_t)> findStart = [&copy, &copyReverse, &start, &findStart, &toContinue, &restart,this](
                 N *node, N *parentNode, uint32_t level, uint32_t parentLevel) {
-	    assert(node != nullptr);
             if (N::isLeaf(node)) {
                 copy(node);
                 return;
@@ -868,7 +861,6 @@ namespace ART_ROWEX {
         uint32_t level = 0;
 		pptr<N> nodePtr = root;
         N *node = nodePtr.getVaddr();
-	assert(node != nullptr);
         findStart(node, node, level, level);
         if(restart)
             goto restart;

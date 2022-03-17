@@ -6,11 +6,6 @@
 #include <memory>
 #include <assert.h>
 
-extern std::atomic<uint64_t> dram_allocated;
-extern std::atomic<uint64_t> pmem_allocated;
-extern std::atomic<uint64_t> dram_freed;
-extern std::atomic<uint64_t> pmem_freed;
-
 using KeyLen = uint32_t;
 
 class Key {
@@ -109,9 +104,6 @@ inline void Key::set(const char bytes[], const std::size_t length) {
         data = stackKey;
     } else {
         data = new uint8_t[length];
-    #ifdef MEMORY_FOOTPRINT
-        dram_allocated += length;
-    #endif
         memcpy(data, bytes, length);
     }
     len = length;
@@ -127,9 +119,6 @@ inline void Key::operator=(const char key[]) {
         data = stackKey;
     } else {
         data = new uint8_t[len];
-    #ifdef MEMORY_FOOTPRINT
-        dram_allocated += len;
-    #endif
         memcpy(data, key, len);
     }
 }
@@ -142,9 +131,6 @@ inline void Key::setKeyLen(KeyLen newLen) {
     len = newLen;
     if (len > stackLen) {
         data = new uint8_t[len];
-    #ifdef MEMORY_FOOTPRINT
-        dram_allocated += len;
-    #endif
     } else {
         data = stackKey;
     }

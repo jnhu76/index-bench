@@ -65,8 +65,6 @@ def print_cpu_topology_in_c(cpuinfo, topology_map, socket_id_set, physical_cpu_i
         print("    { /* socket id: %s */" % socket_id)
         for physical_cpu_id in sorted(physical_cpu_id_set):
             key = ":".join([str(socket_id), str(physical_cpu_id)])
-            if key not in topology_map.keys():
-                continue
             print("        { /* physical cpu id: %s */" % physical_cpu_id)
             print("          ", end = "")
             for (smt_id, os_cpu_id) in enumerate(topology_map[key]):

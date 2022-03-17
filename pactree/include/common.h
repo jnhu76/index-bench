@@ -9,11 +9,11 @@
 #include <cassert>
 #include <iostream>
 #include <libpmemobj.h>
-//#define MULTIPOOL
+#define MULTIPOOL
 #define MAX_NUMA 1
 //#define STRINGKEY
 #define WORKER_THREAD_PER_NUMA 1
-#define KEYLENGTH 8
+#define KEYLENGTH 32
 //#define SYNC
 
 //#define PACTREE_ENABLE_STATS
@@ -21,9 +21,9 @@
 
 template <std::size_t keySize>
 class StringKey {
-public:
+private:
     char data[keySize];
-    // size_t keyLength = 0;
+    size_t keyLength = 0;
 public:
     StringKey() { memset(data, 0x00, keySize);}
     StringKey(const StringKey &other) {
@@ -38,31 +38,29 @@ public:
 //		keyLength = other.keyLength;
         return *this;
     }
-    inline bool operator<(const StringKey<keySize> &other) { return memcmp(data, other.data, KEYLENGTH) < 0;}
-    inline bool operator>(const StringKey<keySize> &other) { return memcmp(data, other.data, KEYLENGTH) > 0;}
-    inline bool operator==(const StringKey<keySize> &other) { return memcmp(data, other.data, KEYLENGTH) == 0;}
+    inline bool operator<(const StringKey<keySize> &other) { return strcmp(data, other.data) < 0;}
+    inline bool operator>(const StringKey<keySize> &other) { return strcmp(data, other.data) > 0;}
+    inline bool operator==(const StringKey<keySize> &other) { return strcmp(data, other.data) == 0;}
     inline bool operator!=(const StringKey<keySize> &other) { return !(*this == other);}
     inline bool operator<=(const StringKey<keySize> &other) { return !(*this > other);}
     inline bool operator>=(const StringKey<keySize> &other) {return !(*this < other);}
 
     size_t size() const {
-        // if (keyLength)
-        //     return keyLength;
-        // else
-        //     return strlen(data);
-        return keySize;
+        if (keyLength)
+            return keyLength;
+        else
+            return strlen(data);
     }
 
     inline void setFromString(std::string key) {
         memset(data, 0, keySize);
         if (key.size() >= keySize) {
-            memcpy(data, key.c_str(), keySize);
-            // memcpy(data, key.c_str(), keySize - 1);
-            // data[keySize - 1] = '\0';
-            // keyLength = keySize;
+            memcpy(data, key.c_str(), keySize - 1);
+            data[keySize - 1] = '\0';
+            keyLength = keySize;
         } else {
             strcpy(data, key.c_str());
-            // keyLength = key.size();
+            keyLength = key.size();
         }
         return;
     }
@@ -71,7 +69,7 @@ public:
         assert(length <= keySize-1);
         memcpy(data, bytes, length);
  //       keyLength = length;
-        // data[length] = '\0';
+        data[length] = '\0';
     }
     const char* getData() const { return data;}
     //friend ostream & operator << (ostream &out, const StringKey<keySize> &k);

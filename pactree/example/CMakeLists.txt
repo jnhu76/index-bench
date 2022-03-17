@@ -14,3 +14,5 @@ TARGET_LINK_LIBRARIES(
 	pmem
 	pmemobj
 )
+
+

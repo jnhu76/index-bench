@@ -1,0 +1,3 @@
+[submodule "third-parts/pactree"]
+	path = third-parts/pactree
+	url = https://ghproxy.com/https://github.com/cosmoss-vt/pactree.git

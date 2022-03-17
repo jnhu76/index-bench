@@ -14,9 +14,6 @@
 #include "SearchLayer.h"
 #include "threadData.h"
 
-extern size_t pool_size_;
-extern std::string *pool_dir_;
-
 extern std::vector<SearchLayer*> g_perNumaSlPtr;
 extern std::set<ThreadData*> g_threadDataSet;
 typedef LinkedList DataLayer;

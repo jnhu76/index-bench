@@ -17,11 +17,6 @@ ListNode :: ListNode(){
     deleted = false;
     bitMap.clear();
     lastScanVersion = 0;
-#ifdef STRINGKEY
-    min = Key_t();
-    max = Key_t();
-    memset(max.data, 0xff, KEYLENGTH);
-#endif
 }
 
 void ListNode::setCur(pptr<ListNode> ptr) {
@@ -285,10 +280,6 @@ pptr<ListNode> ListNode :: split(Key_t key, Val_t val, uint8_t keyHash, int thre
     // 2) Allocate new data node and store persistent pointer to the oplog.
     pptr<ListNode> newNodePtr;
     PMem::alloc(poolId,sizeof(ListNode),(void **)&(newNodePtr),&(oplog->newNodeOid));
-//    PMEMoid asd;
-//    PMem::alloc(poolId,sizeof(ListNode),(void **)&(newNodePtr),&(asd)); //debug
-
-
     if(newNodePtr.getVaddr()==nullptr){
 		exit(1);
     }
@@ -503,19 +494,18 @@ bool ListNode :: insertAtIndex(std::pair<Key_t, Val_t> key, int index, uint8_t k
     if(flush){
         flushToNVM((char*)&keyArray[index],sizeof(keyArray[index]));
     }
-    // printf("Debug: after first flush\n");
+
     fingerPrint[index] = keyHash;
     if(flush){
        flushToNVM((char*)&fingerPrint[index],sizeof(uint8_t));
        smp_wmb();
     }
-    // printf("Debug: after second flush\n");
+
     bitMap.set(index);
     if(flush){
         flushToNVM((char*)this, L1_CACHE_BYTES);
         smp_wmb();
     }
-    // printf("Debug: after third flush\n");
     return true;
 }
 
@@ -712,23 +702,16 @@ int ListNode:: getFreeIndex(Key_t key, uint8_t keyHash) {
 bool ListNode::insert(Key_t key, Val_t value,int threadId) {
     uint8_t keyHash = getKeyFingerPrint(key);
     int index = getFreeIndex(key, keyHash);
-    // printf("Debug: got FP and Free Index\n");
     if (index == -1) return false; // Key exitst
     if (index == -2) { //No free index
-        // printf("Debug: before split\n");
 		pptr<ListNode> newNodePtr=split(key, value, keyHash,threadId);
         ListNode* newNode =newNodePtr.getVaddr();
         ListNode* nextNode = newNode->getNext();
         nextNode->setPrev(newNodePtr);
-        // printf("Debug: after split\n");
         return true;
     }
-    // printf("Debug: before insertAtIndex\n");
     if (!insertAtIndex(std::make_pair(key, value), (uint8_t)index, keyHash, true))
-    {
-        // printf("Debug: after insertAtIndex\n");
         return false;
-    }
     return true;
 }
 #ifdef SYNC
@@ -858,7 +841,6 @@ bool ListNode::scan(Key_t startKey, int range, std::vector<Val_t> &rangeVector, 
     uint8_t startIndex = 0;
     if (startKey > min) startIndex = permuterLowerBound(startKey);
     for (uint8_t i = startIndex; i < numEntries && todo > 0; i++) {
-	rangeVector.push_back((Val_t)(keyArray[permuter[i]].first));
         rangeVector.push_back(keyArray[permuter[i]].second);
         todo--;
     }

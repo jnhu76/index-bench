@@ -173,10 +173,9 @@ void pactreeImpl::createWorkerThread(int numNuma, root_obj *root) {
     for(int i = 0; i < numNuma * WORKER_THREAD_PER_NUMA; i++) {
         threadInitialized[i % numNuma] = false;
         std::thread* wt = new std::thread(workerThreadExec, i, numNuma,root);
-	printf("Worker thread created!\n");
 	usleep(1);
         wtArray->push_back(wt);
-        //pinThread(wt, i % numNuma);
+        pinThread(wt, i % numNuma);
         threadInitialized[i % numNuma] = true;
     }
 
@@ -184,40 +183,38 @@ void pactreeImpl::createWorkerThread(int numNuma, root_obj *root) {
 
 void pactreeImpl::createCombinerThread() {
     combinerThead = new std::thread(combinerThreadExec, totalNumaActive);
-    printf("Combiner thread created!\n");
 }
 
 pactreeImpl *initPT(int numa){
-
-    auto path = *pool_dir_ + "/dl";
-    // size_t sz = 32UL*1024UL*1024UL*1024UL; //32GB
+    const char* path = "/mnt/pmem0/dl";
+    size_t sz = 1UL*1024UL*1024UL*1024UL; //10GB
     int isCreated = 0;
     int isCreated2 = 0;
     root_obj* root = nullptr;
     root_obj* sl_root = nullptr;
 
-   auto sl_path = *pool_dir_ + "/sl";
-   // size_t sl_size = 32UL*1024UL*1024UL*1024UL;
+   const char *sl_path = "/mnt/pmem0/sl";
+   size_t sl_size = 1UL*1024UL*1024UL*1024UL;
 
-   PMem::bind(0,sl_path.c_str(),pool_size_,(void **)&sl_root,&isCreated);
+   PMem::bind(0,sl_path,sl_size,(void **)&sl_root,&isCreated);
     if (isCreated == 0) {
         printf("Reading Search layer from an existing pactree.\n");
 	
     }
-    auto log_path = *pool_dir_ + "/log";
-    PMem::bindLog(0,log_path.c_str(),pool_size_);
+    const char* log_path = "/mnt/pmem0/log";
+    PMem::bindLog(0,log_path,sz);
 
-    PMem::bind(1,path.c_str(),pool_size_,(void **)&root,&isCreated2);
+    PMem::bind(1,path,sz,(void **)&root,&isCreated2);
 
 #ifdef MULTIPOOL
-   const char* path2 = "/mnt/pmem1/georgehe/dl";
-   const char* sl_path2 = "/mnt/pmem1/georgehe/sl";
-   const char* log_path2 = "/mnt/pmem1/georgehe/log";
+   const char* path2 = "/mnt/pmem1/dl";
+   const char* sl_path2 = "/mnt/pmem1/sl";
+   const char* log_path2 = "/mnt/pmem1/log";
    root_obj* root2 = nullptr;
    root_obj* sl_root2 = nullptr;
-   PMem::bind(3,sl_path2,pool_size_,(void **)&sl_root2,&isCreated);
-   PMem::bind(4,path2,pool_size_,(void **)&root2,&isCreated);
-   PMem::bindLog(1,log_path2,pool_size_);
+   PMem::bind(3,sl_path2,sl_size,(void **)&sl_root2,&isCreated);
+   PMem::bind(4,path2,sz,(void **)&root2,&isCreated);
+   PMem::bindLog(1,log_path2,sz);
 #endif
     if (isCreated2 == 0) {
 		pactreeImpl *pt = (pactreeImpl*) pmemobj_direct(root->ptr[0]);
@@ -227,9 +224,6 @@ pactreeImpl *initPT(int numa){
     PMEMobjpool *pop = (PMEMobjpool *)PMem::getBaseOf(1);
 
     int ret = pmemobj_alloc(pop, &(root->ptr[0]), sizeof(pactreeImpl), 0, NULL, NULL);
-#ifdef MEMORY_FOOTPRINT
-    pmem_allocated += sizeof(pactreeImpl);
-#endif
     void *rootVaddr = pmemobj_direct(root->ptr[0]);
     pactreeImpl *pt= (pactreeImpl *)new(rootVaddr) pactreeImpl(numa,sl_root);
     flushToNVM((char *)root, sizeof(root_obj));
@@ -252,7 +246,6 @@ void pactreeImpl::init(int numNuma, root_obj* root) {
     g_combinerStop = false;
     createWorkerThread(numNuma,root);
     createCombinerThread();
-
     for(int i = 0; i < totalNumaActive; i++) {
         while(slReady[i] == false);
     }
@@ -349,8 +342,8 @@ bool pactreeImpl::insert(Key_t &key, Val_t val) {
 #else
 	jumpNode = getJumpNode(key);
 #endif
-    // printf("Debug: After getJumpNode\n");
-    // hydralist_stop_timer(ticks);
+
+    hydralist_stop_timer(ticks);
     hydralist_start_timer();
     acc_sl_time(ticks);
 #ifndef SYNC
@@ -361,12 +354,12 @@ bool pactreeImpl::insert(Key_t &key, Val_t val) {
         JumpNodewithUnLock(art_node) ;
 	}
 #endif
-    // printf("Debug: After dl.insert\n");
+
 
     hydralist_stop_timer(ticks);
     acc_dl_time(ticks);
     curThreadData->read_unlock();
-    // unregisterThread();
+
     return ret;
 }
 
@@ -378,7 +371,6 @@ bool pactreeImpl::update(Key_t &key, Val_t val) {
 
     bool ret = dl.update(key, val, jumpNode);
     curThreadData->read_unlock();
-    // unregisterThread();
     return ret;
 }
 
@@ -400,7 +392,6 @@ Val_t pactreeImpl::lookup(Key_t &key) {
     //hydralist_stop_timer(ticks);
     //acc_dl_time(ticks);
     curThreadData->read_unlock();
-    // unregisterThread();
     return val;
 }
 
@@ -412,7 +403,6 @@ bool pactreeImpl::remove(Key_t &key) {
 
     bool ret = dl.remove(key, jumpNode);
     curThreadData->read_unlock();
-    // unregisterThread();
     return ret;
 }
 
